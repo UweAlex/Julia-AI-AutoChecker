@@ -80,6 +80,16 @@ def lint_julia(code):
     if bad_test_desc:
         issues.append(f"Invalid @test description with $(...): {bad_test_desc[:2]}... – use $var in literal string")
 
+    # NEW 14. Invalid atol in inequality tests (> , <, etc.)
+    bad_atol_ineq = re.findall(r'@test\s+.*?\s+(>|<|>=|<=)\s+.*?\s+atol\s*=', code)
+    if bad_atol_ineq:
+        issues.append(f"Invalid atol in inequality test (> / < etc.): {bad_atol_ineq[:3]}... – use manual check or ≈ for equality")
+        # Auto-fix suggestion: Replace with > 0 (remove atol) or manual tol
+        fixed = re.sub(r'(\@test\s+.*?\s+(>|<|>=|<=)\s+.*?)\s+atol\s*=\s*[0-9.e-]+', r'\1', code)
+        if fixed != code:
+            fixed_code = fixed
+            issues.append("Auto-fixed: Removed atol from inequality – add manual if needed (e.g., > -1e-3)")
+
     if issues:
         return f"Fixes ({len(issues)}):\n" + '\n'.join(f"- {i}" for i in issues[:10]) + f"\n\nFixed code:\n{fixed_code}"
     return f"Clean! Ready for Julia.\n\nCode:\n{code}"
